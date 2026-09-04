@@ -24,9 +24,11 @@ import {
   Languages,
   Folder,
   Image as ImageIcon,
+  Sparkles as SparklesIcon,
 } from "lucide-react";
 
 import { supabase } from "@/lib/supabase";
+import AIProductCreator from "@/components/admin/ai-product-creator";
 
 /* =========================================================
    TYPES
@@ -141,6 +143,9 @@ export default function AdminPage() {
     useState(false);
 
   const [showProductForm, setShowProductForm] =
+    useState(false);
+
+  const [showAIProductCreator, setShowAIProductCreator] =
     useState(false);
 
   const [editingProductId, setEditingProductId] =
@@ -348,6 +353,45 @@ export default function AdminPage() {
   /* =======================================================
      CREATE PRODUCT
   ======================================================= */
+
+  function startAIProductCreator() {
+    setShowAIProductCreator(true);
+
+    window.scrollTo({
+      top: 0,
+      behavior: "smooth",
+    });
+  }
+
+  function applyAIProduct(data: {
+    name_ar: string;
+    name_en: string;
+    description_ar: string;
+    description_en: string;
+    category_id: string;
+    features: string[];
+    sizes: string[];
+    images: string[];
+  }) {
+    setProductForm((current) => ({
+      ...current,
+      name_ar: data.name_ar,
+      name_en: data.name_en,
+      description_ar: data.description_ar,
+      description_en: data.description_en,
+      category_id: data.category_id,
+      features: data.features.join(", "),
+      sizes: data.sizes.join(", "),
+    }));
+
+    setShowAIProductCreator(false);
+    setShowProductForm(true);
+
+    window.scrollTo({
+      top: 0,
+      behavior: "smooth",
+    });
+  }
 
   function startCreateProduct() {
     setEditingProductId(null);
@@ -1358,6 +1402,24 @@ export default function AdminPage() {
             <button
               type="button"
               onClick={
+                startAIProductCreator
+              }
+              className="flex items-center gap-2 rounded-xl border border-[#b6ff00]/30 bg-[#b6ff00]/10 px-4 py-3 text-sm font-black text-[#b6ff00] transition hover:bg-[#b6ff00]/20"
+            >
+              <SparklesIcon size={18} />
+
+              <span className="hidden sm:inline">
+                إنشاء بالذكاء الاصطناعي
+              </span>
+
+              <span className="sm:hidden">
+                AI
+              </span>
+            </button>
+
+            <button
+              type="button"
+              onClick={
                 startCreateProduct
               }
               className="flex items-center gap-2 rounded-xl bg-[#b6ff00] px-4 py-3 text-sm font-black text-black transition hover:scale-105"
@@ -1689,6 +1751,16 @@ export default function AdminPage() {
 
             </form>
           </section>
+        )}
+
+        {showAIProductCreator && (
+          <AIProductCreator
+            categories={categories}
+            onApply={applyAIProduct}
+            onClose={() =>
+              setShowAIProductCreator(false)
+            }
+          />
         )}
 
         {/* =================================================
