@@ -1,3 +1,5 @@
+export type MarketCode = "EG" | "SA" | "AE" | "JO";
+
 export type CartItem = {
   productId: string;
   name: string;
@@ -5,6 +7,7 @@ export type CartItem = {
   imageUrl: string | null;
   quantity: number;
   size?: string;
+  marketCode: MarketCode;
 };
 
 const CART_KEY = "flex-cart";
@@ -21,7 +24,17 @@ export function getCart(): CartItem[] {
 
     if (!Array.isArray(parsed)) return [];
 
-    return parsed;
+    return parsed.filter(
+      (item): item is CartItem =>
+        item &&
+        typeof item.productId === "string" &&
+        typeof item.name === "string" &&
+        typeof item.price === "number" &&
+        typeof item.quantity === "number" &&
+        ["EG", "SA", "AE", "JO"].includes(
+          item.marketCode
+        )
+    );
   } catch (error) {
     console.error("Failed to read cart:", error);
     return [];
@@ -32,7 +45,10 @@ export function saveCart(items: CartItem[]) {
   if (typeof window === "undefined") return;
 
   try {
-    localStorage.setItem(CART_KEY, JSON.stringify(items));
+    localStorage.setItem(
+      CART_KEY,
+      JSON.stringify(items)
+    );
 
     window.dispatchEvent(new Event("cart-updated"));
   } catch (error) {
@@ -43,10 +59,28 @@ export function saveCart(items: CartItem[]) {
 export function addToCart(item: CartItem) {
   const cart = getCart();
 
+  /*
+   * A cart can contain products from ONE market only.
+   */
+  if (
+    cart.length > 0 &&
+    cart.some(
+      (cartItem) =>
+        cartItem.marketCode !== item.marketCode
+    )
+  ) {
+    return {
+      success: false,
+      cart,
+      reason: "MARKET_MISMATCH" as const,
+    };
+  }
+
   const existing = cart.find(
     (cartItem) =>
       cartItem.productId === item.productId &&
-      cartItem.size === item.size
+      cartItem.size === item.size &&
+      cartItem.marketCode === item.marketCode
   );
 
   if (existing) {
@@ -57,7 +91,11 @@ export function addToCart(item: CartItem) {
 
   saveCart(cart);
 
-  return cart;
+  return {
+    success: true,
+    cart,
+    reason: null,
+  };
 }
 
 export function removeFromCart(
@@ -108,21 +146,37 @@ export function clearCart() {
 
   localStorage.removeItem(CART_KEY);
 
-  window.dispatchEvent(new Event("cart-updated"));
+  window.dispatchEvent(
+    new Event("cart-updated")
+  );
 }
 
-export function getCartTotal(items: CartItem[]) {
+export function getCartTotal(
+  items: CartItem[]
+) {
   return items.reduce(
     (total, item) =>
-      total + Number(item.price) * Number(item.quantity),
+      total +
+      Number(item.price) *
+        Number(item.quantity),
     0
   );
 }
 
-export function getCartCount(items: CartItem[]) {
+export function getCartCount(
+  items: CartItem[]
+) {
   return items.reduce(
     (total, item) =>
       total + Number(item.quantity),
     0
   );
+}
+
+export function getCartMarket(
+  items: CartItem[]
+): MarketCode | null {
+  if (items.length === 0) return null;
+
+  return items[0].marketCode;
 }

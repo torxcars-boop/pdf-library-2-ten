@@ -13,7 +13,13 @@ import {
   Search,
   Sparkles,
   X,
+  Menu,
+  Home,
+  Layers3,
+  ShoppingBag,
+  ShieldCheck,
 } from "lucide-react";
+
 import { supabase } from "@/lib/supabase";
 
 type Language = "ar" | "en";
@@ -48,6 +54,10 @@ type AISearchResult = {
 const translations = {
   ar: {
     store: "NEXORA",
+    premiumStore: "PREMIUM STORE",
+    home: "الرئيسية",
+    categoriesNav: "الأقسام",
+    productsNav: "المنتجات",
     admin: "لوحة التحكم",
     cart: "السلة",
     heroLabel: "تسوق بثقة",
@@ -92,6 +102,10 @@ const translations = {
 
   en: {
     store: "NEXORA",
+    premiumStore: "PREMIUM STORE",
+    home: "Home",
+    categoriesNav: "Categories",
+    productsNav: "Products",
     admin: "Admin",
     cart: "Cart",
     heroLabel: "SHOP WITH CONFIDENCE",
@@ -157,7 +171,11 @@ export default function HomePage() {
   const [aiAnswer, setAiAnswer] = useState("");
   const [aiResults, setAiResults] = useState<string[]>([]);
   const [aiError, setAiError] = useState("");
+
   const [showAISearch, setShowAISearch] =
+    useState(false);
+
+  const [mobileMenuOpen, setMobileMenuOpen] =
     useState(false);
 
   const t = translations[language];
@@ -245,6 +263,8 @@ export default function HomePage() {
       "store-language",
       nextLanguage
     );
+
+    setMobileMenuOpen(false);
   }
 
   function getCategoryName(
@@ -309,8 +329,7 @@ export default function HomePage() {
         {
           method: "POST",
           headers: {
-            "Content-Type":
-              "application/json",
+            "Content-Type": "application/json",
           },
           body: JSON.stringify({
             query,
@@ -394,65 +413,189 @@ export default function HomePage() {
 
         {/* HEADER */}
 
-        <header className="sticky top-0 z-50 border-b border-white/10 bg-[#050505]/80 backdrop-blur-2xl animate-header">
-          <div className="mx-auto flex min-h-[72px] max-w-7xl items-center justify-between px-4 sm:px-8">
-            <Link
-              href="/"
-              className="group flex items-center gap-3"
-            >
-              <div className="relative flex h-10 w-10 items-center justify-center rounded-xl bg-[#b6ff00] text-xl font-black text-black transition duration-300 group-hover:scale-110 group-hover:rotate-3">
-                <span className="relative z-10">
-                  N
-                </span>
-
-                <span className="absolute inset-0 rounded-xl bg-[#b6ff00] opacity-40 blur-md transition group-hover:opacity-70" />
-              </div>
-
-              <div>
-                <div className="text-lg font-black tracking-tight">
-                  {t.store}
-                </div>
-
-                <div className="text-[10px] font-medium tracking-[0.15em] text-white/30">
-                  PREMIUM STORE
-                </div>
-              </div>
-            </Link>
-
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={changeLanguage}
-                className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2.5 text-xs font-bold text-white/60 transition duration-300 hover:border-[#b6ff00]/30 hover:bg-[#b6ff00]/5 hover:text-white"
-              >
-                <Globe2 size={16} />
-
-                <span className="hidden sm:inline">
-                  {t.language}
-                </span>
-              </button>
+        <header className="sticky top-0 z-50 border-b border-white/10 bg-[#050505]/90 backdrop-blur-2xl animate-header">
+          <div className="mx-auto max-w-7xl px-4 sm:px-8">
+            <div className="flex min-h-[86px] items-center justify-between gap-6">
+              {/* LOGO */}
 
               <Link
-                href="/admin"
-                className="hidden rounded-xl border border-white/10 px-4 py-2.5 text-xs font-bold text-white/50 transition duration-300 hover:border-[#b6ff00]/30 hover:text-white sm:block"
+                href="/"
+                className="group flex shrink-0 items-center gap-3"
               >
-                {t.admin}
+                <div className="relative flex h-14 w-14 items-center justify-center rounded-2xl bg-[#b6ff00] text-3xl font-black text-black shadow-[0_0_35px_rgba(182,255,0,0.18)] transition duration-300 group-hover:scale-105 group-hover:rotate-2">
+                  <span className="relative z-10">
+                    N
+                  </span>
+
+                  <span className="absolute inset-0 rounded-2xl bg-[#b6ff00] opacity-40 blur-xl transition group-hover:opacity-70" />
+                </div>
+
+                <div>
+                  <div className="text-2xl font-black tracking-[-0.04em] sm:text-3xl">
+                    {t.store}
+                  </div>
+
+                  <div className="mt-0.5 text-[9px] font-bold tracking-[0.28em] text-white/30 sm:text-[10px]">
+                    {t.premiumStore}
+                  </div>
+                </div>
               </Link>
 
-              <Link
-                href="/cart"
-                className="group relative flex items-center gap-2 rounded-xl bg-[#b6ff00] px-3 py-2.5 text-sm font-black text-black transition duration-300 hover:scale-105 sm:px-4"
-              >
-                <ShoppingCart
-                  size={17}
-                  className="transition group-hover:rotate-[-8deg]"
-                />
+              {/* DESKTOP NAV */}
 
-                <span>{t.cart}</span>
+              <nav className="hidden items-center gap-1 lg:flex">
+                <Link
+                  href="/"
+                  className="group flex items-center gap-2 rounded-xl px-4 py-3 text-sm font-bold text-white/65 transition hover:bg-white/[0.04] hover:text-white"
+                >
+                  <Home
+                    size={16}
+                    className="text-[#b6ff00] transition group-hover:scale-110"
+                  />
 
-                <span className="absolute inset-0 rounded-xl bg-[#b6ff00] opacity-0 blur-md transition group-hover:opacity-40" />
-              </Link>
+                  {t.home}
+                </Link>
+
+                <Link
+                  href="#categories"
+                  className="group flex items-center gap-2 rounded-xl px-4 py-3 text-sm font-bold text-white/65 transition hover:bg-white/[0.04] hover:text-white"
+                >
+                  <Layers3
+                    size={16}
+                    className="text-white/30 transition group-hover:text-[#b6ff00]"
+                  />
+
+                  {t.categoriesNav}
+                </Link>
+
+                <Link
+                  href="#products"
+                  className="group flex items-center gap-2 rounded-xl px-4 py-3 text-sm font-bold text-white/65 transition hover:bg-white/[0.04] hover:text-white"
+                >
+                  <ShoppingBag
+                    size={16}
+                    className="text-white/30 transition group-hover:text-[#b6ff00]"
+                  />
+
+                  {t.productsNav}
+                </Link>
+              </nav>
+
+              {/* ACTIONS */}
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={changeLanguage}
+                  className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.03] px-3 py-3 text-xs font-bold text-white/60 transition duration-300 hover:border-[#b6ff00]/30 hover:bg-[#b6ff00]/5 hover:text-white"
+                >
+                  <Globe2 size={17} />
+
+                  <span className="hidden sm:inline">
+                    {t.language}
+                  </span>
+                </button>
+
+                <Link
+                  href="/admin"
+                  className="hidden items-center gap-2 rounded-xl border border-white/10 px-4 py-3 text-xs font-bold text-white/50 transition duration-300 hover:border-[#b6ff00]/30 hover:text-white xl:flex"
+                >
+                  <ShieldCheck size={15} />
+
+                  {t.admin}
+                </Link>
+
+                <Link
+                  href="/cart"
+                  className="group relative flex items-center gap-2 rounded-xl bg-[#b6ff00] px-3 py-3 text-sm font-black text-black transition duration-300 hover:scale-105 sm:px-4"
+                >
+                  <ShoppingCart
+                    size={17}
+                    className="transition group-hover:rotate-[-8deg]"
+                  />
+
+                  <span className="hidden sm:inline">
+                    {t.cart}
+                  </span>
+
+                  <span className="absolute inset-0 rounded-xl bg-[#b6ff00] opacity-0 blur-md transition group-hover:opacity-40" />
+                </Link>
+
+                {/* MOBILE MENU */}
+
+                <button
+                  type="button"
+                  onClick={() =>
+                    setMobileMenuOpen(
+                      (value) => !value
+                    )
+                  }
+                  className="flex h-12 w-12 items-center justify-center rounded-xl border border-white/10 bg-white/[0.03] text-white/60 transition hover:border-[#b6ff00]/30 hover:text-white lg:hidden"
+                  aria-label="Menu"
+                >
+                  <Menu size={20} />
+                </button>
+              </div>
             </div>
+
+            {/* MOBILE NAV */}
+
+            {mobileMenuOpen && (
+              <div className="border-t border-white/10 py-4 lg:hidden">
+                <nav className="grid gap-2">
+                  <Link
+                    href="/"
+                    onClick={() =>
+                      setMobileMenuOpen(false)
+                    }
+                    className="flex items-center gap-3 rounded-xl bg-white/[0.03] px-4 py-3 text-sm font-bold text-white"
+                  >
+                    <Home
+                      size={17}
+                      className="text-[#b6ff00]"
+                    />
+
+                    {t.home}
+                  </Link>
+
+                  <Link
+                    href="#categories"
+                    onClick={() =>
+                      setMobileMenuOpen(false)
+                    }
+                    className="flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-bold text-white/60 hover:bg-white/[0.03] hover:text-white"
+                  >
+                    <Layers3 size={17} />
+
+                    {t.categoriesNav}
+                  </Link>
+
+                  <Link
+                    href="#products"
+                    onClick={() =>
+                      setMobileMenuOpen(false)
+                    }
+                    className="flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-bold text-white/60 hover:bg-white/[0.03] hover:text-white"
+                  >
+                    <ShoppingBag size={17} />
+
+                    {t.productsNav}
+                  </Link>
+
+                  <Link
+                    href="/admin"
+                    onClick={() =>
+                      setMobileMenuOpen(false)
+                    }
+                    className="flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-bold text-white/60 hover:bg-white/[0.03] hover:text-white"
+                  >
+                    <ShieldCheck size={17} />
+
+                    {t.admin}
+                  </Link>
+                </nav>
+              </div>
+            )}
           </div>
         </header>
 
@@ -783,7 +926,7 @@ export default function HomePage() {
 
         <section
           id="categories"
-          className="relative z-10 mx-auto max-w-7xl scroll-mt-24 px-5 pb-24 sm:px-8"
+          className="relative z-10 mx-auto max-w-7xl scroll-mt-28 px-5 pb-24 sm:px-8"
         >
           <SectionHeading
             label={t.categoriesLabel}
@@ -916,7 +1059,7 @@ export default function HomePage() {
 
         <section
           id="products"
-          className="relative z-10 mx-auto max-w-7xl scroll-mt-24 px-5 pb-24 sm:px-8"
+          className="relative z-10 mx-auto max-w-7xl scroll-mt-28 px-5 pb-24 sm:px-8"
         >
           <SectionHeading
             label={t.productsLabel}
@@ -1155,6 +1298,7 @@ export default function HomePage() {
               <div className="mt-4 rounded-2xl border border-[#b6ff00]/10 bg-[#b6ff00]/[0.03] p-4">
                 <div className="flex items-center gap-2 text-xs font-black text-[#b6ff00]">
                   <Sparkles size={14} />
+
                   AI SEARCH
                 </div>
 
@@ -1363,6 +1507,10 @@ export default function HomePage() {
 
         .animation-delay-500 {
           animation-delay: 500ms;
+        }
+
+        .animate-pulse-slow {
+          animation: pulse 8s ease-in-out infinite;
         }
 
         @media (prefers-reduced-motion: reduce) {
@@ -1574,6 +1722,7 @@ function ProductPrice({
 
       <span className="flex items-center gap-1.5 text-xs font-black text-white/35 transition group-hover:text-white">
         {details}
+
         {arrow}
       </span>
     </div>

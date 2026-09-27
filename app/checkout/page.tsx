@@ -10,16 +10,125 @@ import {
   MessageCircle,
 } from "lucide-react";
 
-type CartItem = {
-  id: string;
+import {
+  CartItem,
+  MarketCode,
+  getCart,
+  clearCart,
+  getCartTotal,
+  getCartMarket,
+} from "@/lib/cart";
+
+type MarketInfo = {
   name: string;
-  price: number;
-  image_url: string | null;
-  size?: string;
-  quantity: number;
+  currency: string;
+  currencyCode: string;
+  locale: string;
+  countryCode: string;
+};
+
+const MARKET_INFO: Record<MarketCode, MarketInfo> = {
+  EG: {
+    name: "مصر",
+    currency: "ج.م",
+    currencyCode: "EGP",
+    locale: "ar-EG",
+    countryCode: "🇪🇬",
+  },
+  SA: {
+    name: "السعودية",
+    currency: "ر.س",
+    currencyCode: "SAR",
+    locale: "ar-SA",
+    countryCode: "🇸🇦",
+  },
+  AE: {
+    name: "الإمارات",
+    currency: "د.إ",
+    currencyCode: "AED",
+    locale: "ar-AE",
+    countryCode: "🇦🇪",
+  },
+  JO: {
+    name: "الأردن",
+    currency: "د.أ",
+    currencyCode: "JOD",
+    locale: "ar-JO",
+    countryCode: "🇯🇴",
+  },
 };
 
 const WHATSAPP_NUMBER = "201115491611";
+
+const GOVERNORATES: Record<MarketCode, string[]> = {
+  EG: [
+    "القاهرة",
+    "الجيزة",
+    "الإسكندرية",
+    "الدقهلية",
+    "البحيرة",
+    "الشرقية",
+    "القليوبية",
+    "الغربية",
+    "المنوفية",
+    "كفر الشيخ",
+    "دمياط",
+    "بورسعيد",
+    "الإسماعيلية",
+    "السويس",
+    "الفيوم",
+    "بني سويف",
+    "المنيا",
+    "أسيوط",
+    "سوهاج",
+    "قنا",
+    "الأقصر",
+    "أسوان",
+    "البحر الأحمر",
+    "الوادي الجديد",
+    "مطروح",
+    "شمال سيناء",
+    "جنوب سيناء",
+  ],
+  SA: [
+    "الرياض",
+    "مكة المكرمة",
+    "المدينة المنورة",
+    "القصيم",
+    "المنطقة الشرقية",
+    "عسير",
+    "تبوك",
+    "حائل",
+    "الحدود الشمالية",
+    "جازان",
+    "نجران",
+    "الباحة",
+    "الجوف",
+  ],
+  AE: [
+    "أبوظبي",
+    "دبي",
+    "الشارقة",
+    "عجمان",
+    "أم القيوين",
+    "رأس الخيمة",
+    "الفجيرة",
+  ],
+  JO: [
+    "عمّان",
+    "إربد",
+    "الزرقاء",
+    "البلقاء",
+    "مادبا",
+    "الكرك",
+    "الطفيلة",
+    "معان",
+    "العقبة",
+    "جرش",
+    "عجلون",
+    "المفرق",
+  ],
+};
 
 export default function CheckoutPage() {
   const [items, setItems] = useState<CartItem[]>([]);
@@ -33,54 +142,35 @@ export default function CheckoutPage() {
   const [address, setAddress] = useState("");
   const [notes, setNotes] = useState("");
 
-  /*
-   * تحميل السلة بعد تشغيل الصفحة
-   *
-   * بدل setState مباشرة داخل useEffect،
-   * نستخدم requestAnimationFrame حتى لا يخالف
-   * React Compiler / ESLint الجديد.
-   */
   useEffect(() => {
-    const loadCart = () => {
-      try {
-        const saved = localStorage.getItem("flex-cart");
+    const frame = window.requestAnimationFrame(() => {
+      const cart = getCart();
 
-        if (saved) {
-          const parsed = JSON.parse(saved);
-
-          if (Array.isArray(parsed)) {
-            setItems(parsed as CartItem[]);
-          }
-        }
-      } catch (error) {
-        console.error("CART LOAD ERROR:", error);
-      } finally {
-        setReady(true);
-      }
-    };
-
-    const frame = window.requestAnimationFrame(loadCart);
+      setItems(cart);
+      setReady(true);
+    });
 
     return () => {
       window.cancelAnimationFrame(frame);
     };
   }, []);
 
-  const subtotal = items.reduce(
-    (total, item) => total + item.price * item.quantity,
-    0
-  );
+  const marketCode = getCartMarket(items) || "EG";
+  const market = MARKET_INFO[marketCode];
 
-  /*
-   * الشحن يتم تحديده لاحقًا
-   */
+  const subtotal = getCartTotal(items);
   const shipping = 0;
   const total = subtotal + shipping;
 
-  /*
-   * إرسال الطلب مباشرة إلى واتساب
-   */
-  const submitOrder = (event: FormEvent<HTMLFormElement>) => {
+  const formatPrice = (value: number) => {
+    return `${Number(value).toLocaleString(
+      market.locale
+    )} ${market.currency}`;
+  };
+
+  const submitOrder = (
+    event: FormEvent<HTMLFormElement>
+  ) => {
     event.preventDefault();
 
     if (items.length === 0) {
@@ -99,7 +189,7 @@ export default function CheckoutPage() {
     }
 
     if (!governorate.trim()) {
-      alert("من فضلك اختر المحافظة.");
+      alert("من فضلك اختر المنطقة.");
       return;
     }
 
@@ -110,43 +200,43 @@ export default function CheckoutPage() {
 
     setSubmitting(true);
 
-    /*
-     * إنشاء رقم طلب آمن بدون Date.now()
-     */
-    const generatedOrderId = `FLEX-${crypto
+    const generatedOrderId = `NEXORA-${crypto
       .randomUUID()
       .split("-")[0]
       .toUpperCase()}`;
 
-    /*
-     * تجهيز المنتجات
-     */
     const productsText = items
       .map((item, index) => {
-        const itemTotal = item.price * item.quantity;
+        const itemTotal =
+          Number(item.price) *
+          Number(item.quantity);
 
         return [
           `${index + 1}) ${item.name}`,
           `   الكمية: ${item.quantity}`,
-          item.size ? `   المقاس: ${item.size}` : null,
-          `   السعر: ${item.price.toLocaleString("ar-EG")} جنيه`,
-          `   الإجمالي: ${itemTotal.toLocaleString("ar-EG")} جنيه`,
+          item.size
+            ? `   المقاس: ${item.size}`
+            : null,
+          `   السعر: ${formatPrice(item.price)}`,
+          `   الإجمالي: ${formatPrice(itemTotal)}`,
         ]
           .filter(Boolean)
           .join("\n");
       })
       .join("\n\n");
 
-    /*
-     * رسالة الطلب
-     */
     const message = `
-🛍️ *طلب شراء جديد - FLEX*
-
+🛍️ *طلب شراء جديد - NEXORA*
 ━━━━━━━━━━━━━━━━━━
 
 📦 *رقم الطلب:*
 ${generatedOrderId}
+
+🌍 *السوق:*
+${market.countryCode} ${market.name}
+
+💱 *العملة:*
+${market.currencyCode} — ${market.currency}
 
 👤 *بيانات العميل:*
 
@@ -156,7 +246,7 @@ ${name.trim()}
 رقم الهاتف:
 ${phone.trim()}
 
-المحافظة:
+المنطقة:
 ${governorate.trim()}
 
 العنوان:
@@ -169,9 +259,7 @@ ${notes.trim()}
 
 `
     : ""
-}
-
-━━━━━━━━━━━━━━━━━━
+}━━━━━━━━━━━━━━━━━━
 
 🛒 *المنتجات:*
 
@@ -182,35 +270,23 @@ ${productsText}
 💰 *ملخص الطلب:*
 
 قيمة المنتجات:
-${subtotal.toLocaleString("ar-EG")} جنيه
+${formatPrice(subtotal)}
 
 الشحن:
 سيتم تحديده
 
 *الإجمالي:*
-${total.toLocaleString("ar-EG")} جنيه
+${formatPrice(total)}
 
 ━━━━━━━━━━━━━━━━━━
 
-✅ تم إرسال الطلب من متجر FLEX
+🌐 تم إرسال الطلب من متجر NEXORA
 `.trim();
 
-    /*
-     * رابط واتساب
-     */
-    const whatsappUrl = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(
-      message
-    )}`;
+    const whatsappUrl =
+      `https://wa.me/${WHATSAPP_NUMBER}` +
+      `?text=${encodeURIComponent(message)}`;
 
-    /*
-     * فتح واتساب.
-     *
-     * لا نعدل window.location هنا لأن ESLint يعتبر
-     * location قيمة غير قابلة للتعديل داخل component.
-     *
-     * لو المتصفح منع popup، نستخدم window.open
-     * مرة أخرى في نفس الصفحة.
-     */
     const whatsappWindow = window.open(
       whatsappUrl,
       "_blank",
@@ -219,29 +295,15 @@ ${total.toLocaleString("ar-EG")} جنيه
 
     if (!whatsappWindow) {
       window.open(whatsappUrl, "_self");
-      return;
     }
 
-    /*
-     * مسح السلة
-     */
-    localStorage.removeItem("flex-cart");
-
-    window.dispatchEvent(new Event("cart-updated"));
+    clearCart();
 
     setItems([]);
-
-    /*
-     * عرض صفحة النجاح
-     */
     setOrderId(generatedOrderId);
-
     setSubmitting(false);
   };
 
-  /*
-   * تحميل الصفحة
-   */
   if (!ready) {
     return (
       <main className="flex min-h-screen items-center justify-center bg-[#050505] text-white">
@@ -253,9 +315,6 @@ ${total.toLocaleString("ar-EG")} جنيه
     );
   }
 
-  /*
-   * نجاح الطلب
-   */
   if (orderId) {
     return (
       <main
@@ -294,6 +353,21 @@ ${total.toLocaleString("ar-EG")} جنيه
             </div>
           </div>
 
+          <div className="mt-4 rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+            <div className="text-xs text-white/35">
+              السوق
+            </div>
+
+            <div className="mt-1 font-black">
+              {market.countryCode} {market.name}
+            </div>
+
+            <div className="mt-1 text-xs text-[#b6ff00]">
+              {market.currencyCode} —{" "}
+              {market.currency}
+            </div>
+          </div>
+
           <div className="mt-6 rounded-2xl border border-[#b6ff00]/20 bg-[#b6ff00]/5 p-4">
             <div className="flex items-center justify-center gap-2 text-sm font-bold text-[#b6ff00]">
               <MessageCircle size={18} />
@@ -313,9 +387,6 @@ ${total.toLocaleString("ar-EG")} جنيه
     );
   }
 
-  /*
-   * السلة فارغة
-   */
   if (items.length === 0) {
     return (
       <main
@@ -352,7 +423,6 @@ ${total.toLocaleString("ar-EG")} جنيه
       dir="rtl"
       className="min-h-screen bg-[#050505] text-white"
     >
-      {/* HEADER */}
       <header className="border-b border-white/10 bg-black/80">
         <div className="mx-auto flex min-h-20 max-w-7xl items-center justify-between px-5 sm:px-8">
           <Link
@@ -364,7 +434,7 @@ ${total.toLocaleString("ar-EG")} جنيه
           </Link>
 
           <div className="text-xl font-black">
-            FLEX
+            NEXORA
           </div>
 
           <div className="text-sm text-white/35">
@@ -373,7 +443,6 @@ ${total.toLocaleString("ar-EG")} جنيه
         </div>
       </header>
 
-      {/* CHECKOUT */}
       <section className="mx-auto max-w-6xl px-5 py-10 sm:px-8 sm:py-16">
         <div className="mb-10">
           <div className="text-xs font-bold tracking-[0.2em] text-[#b6ff00]">
@@ -385,23 +454,43 @@ ${total.toLocaleString("ar-EG")} جنيه
           </h1>
 
           <p className="mt-3 text-sm leading-7 text-white/40">
-            أدخل بياناتك بدقة حتى نتمكن من التواصل معك
-            وتوصيل طلبك.
+            أدخل بياناتك بدقة حتى نتمكن من التواصل
+            معك وتوصيل طلبك.
           </p>
+
+          <div className="mt-6 inline-flex items-center gap-3 rounded-2xl border border-[#b6ff00]/20 bg-[#b6ff00]/5 px-5 py-3">
+            <span className="text-xl">
+              {market.countryCode}
+            </span>
+
+            <div>
+              <div className="text-xs text-white/40">
+                السوق المختار
+              </div>
+
+              <div className="font-black text-[#b6ff00]">
+                {market.name}
+              </div>
+            </div>
+
+            <div className="mr-2 border-r border-white/10 pr-4 text-sm text-white/40">
+              {market.currencyCode}
+              {" — "}
+              {market.currency}
+            </div>
+          </div>
         </div>
 
         <form
           onSubmit={submitOrder}
           className="grid gap-8 lg:grid-cols-[1fr_360px]"
         >
-          {/* CUSTOMER FORM */}
           <div className="rounded-[2rem] border border-white/10 bg-[#0a0a0a] p-6 sm:p-8">
             <h2 className="text-2xl font-black">
               بيانات العميل
             </h2>
 
             <div className="mt-7 grid gap-5">
-              {/* NAME */}
               <div>
                 <label className="mb-2 block text-sm font-bold">
                   الاسم بالكامل *
@@ -418,7 +507,6 @@ ${total.toLocaleString("ar-EG")} جنيه
                 />
               </div>
 
-              {/* PHONE */}
               <div>
                 <label className="mb-2 block text-sm font-bold">
                   رقم الهاتف *
@@ -437,10 +525,9 @@ ${total.toLocaleString("ar-EG")} جنيه
                 />
               </div>
 
-              {/* GOVERNORATE */}
               <div>
                 <label className="mb-2 block text-sm font-bold">
-                  المحافظة *
+                  المحافظة / المنطقة *
                 </label>
 
                 <select
@@ -452,94 +539,22 @@ ${total.toLocaleString("ar-EG")} جنيه
                   required
                 >
                   <option value="">
-                    اختر المحافظة
+                    اختر المحافظة / المنطقة
                   </option>
 
-                  <option value="القاهرة">
-                    القاهرة
-                  </option>
-                  <option value="الجيزة">
-                    الجيزة
-                  </option>
-                  <option value="الإسكندرية">
-                    الإسكندرية
-                  </option>
-                  <option value="الدقهلية">
-                    الدقهلية
-                  </option>
-                  <option value="البحيرة">
-                    البحيرة
-                  </option>
-                  <option value="الشرقية">
-                    الشرقية
-                  </option>
-                  <option value="القليوبية">
-                    القليوبية
-                  </option>
-                  <option value="الغربية">
-                    الغربية
-                  </option>
-                  <option value="المنوفية">
-                    المنوفية
-                  </option>
-                  <option value="كفر الشيخ">
-                    كفر الشيخ
-                  </option>
-                  <option value="دمياط">
-                    دمياط
-                  </option>
-                  <option value="بورسعيد">
-                    بورسعيد
-                  </option>
-                  <option value="الإسماعيلية">
-                    الإسماعيلية
-                  </option>
-                  <option value="السويس">
-                    السويس
-                  </option>
-                  <option value="الفيوم">
-                    الفيوم
-                  </option>
-                  <option value="بني سويف">
-                    بني سويف
-                  </option>
-                  <option value="المنيا">
-                    المنيا
-                  </option>
-                  <option value="أسيوط">
-                    أسيوط
-                  </option>
-                  <option value="سوهاج">
-                    سوهاج
-                  </option>
-                  <option value="قنا">
-                    قنا
-                  </option>
-                  <option value="الأقصر">
-                    الأقصر
-                  </option>
-                  <option value="أسوان">
-                    أسوان
-                  </option>
-                  <option value="البحر الأحمر">
-                    البحر الأحمر
-                  </option>
-                  <option value="الوادي الجديد">
-                    الوادي الجديد
-                  </option>
-                  <option value="مطروح">
-                    مطروح
-                  </option>
-                  <option value="شمال سيناء">
-                    شمال سيناء
-                  </option>
-                  <option value="جنوب سيناء">
-                    جنوب سيناء
-                  </option>
+                  {GOVERNORATES[marketCode].map(
+                    (item) => (
+                      <option
+                        key={item}
+                        value={item}
+                      >
+                        {item}
+                      </option>
+                    )
+                  )}
                 </select>
               </div>
 
-              {/* ADDRESS */}
               <div>
                 <label className="mb-2 block text-sm font-bold">
                   العنوان بالتفصيل *
@@ -557,7 +572,6 @@ ${total.toLocaleString("ar-EG")} جنيه
                 />
               </div>
 
-              {/* NOTES */}
               <div>
                 <label className="mb-2 block text-sm font-bold">
                   ملاحظات إضافية
@@ -576,7 +590,6 @@ ${total.toLocaleString("ar-EG")} جنيه
             </div>
           </div>
 
-          {/* ORDER SUMMARY */}
           <aside className="h-fit rounded-[2rem] border border-white/10 bg-[#0a0a0a] p-6 lg:sticky lg:top-8">
             <div className="mb-6">
               <div className="text-xs font-bold text-[#b6ff00]">
@@ -588,10 +601,26 @@ ${total.toLocaleString("ar-EG")} جنيه
               </h2>
             </div>
 
+            <div className="mb-5 rounded-2xl border border-white/10 bg-white/[0.02] p-4">
+              <div className="text-xs text-white/40">
+                السوق
+              </div>
+
+              <div className="mt-1 font-black">
+                {market.countryCode}{" "}
+                {market.name}
+              </div>
+
+              <div className="mt-1 text-xs text-[#b6ff00]">
+                {market.currencyCode} —{" "}
+                {market.currency}
+              </div>
+            </div>
+
             <div className="space-y-4 border-b border-white/10 pb-5">
               {items.map((item, index) => (
                 <div
-                  key={`${item.id}-${item.size || "default"}-${index}`}
+                  key={`${item.productId}-${item.size || "default"}-${index}`}
                   className="flex items-center justify-between gap-4"
                 >
                   <div className="min-w-0">
@@ -609,10 +638,10 @@ ${total.toLocaleString("ar-EG")} جنيه
                   </div>
 
                   <div className="shrink-0 text-sm font-bold text-[#b6ff00]">
-                    {(
-                      item.price * item.quantity
-                    ).toLocaleString("ar-EG")}{" "}
-                    ج
+                    {formatPrice(
+                      Number(item.price) *
+                        Number(item.quantity)
+                    )}
                   </div>
                 </div>
               ))}
@@ -620,17 +649,21 @@ ${total.toLocaleString("ar-EG")} جنيه
 
             <div className="space-y-4 py-5 text-sm">
               <div className="flex justify-between text-white/45">
-                <span>قيمة المنتجات</span>
+                <span>
+                  قيمة المنتجات
+                </span>
 
                 <span>
-                  {subtotal.toLocaleString("ar-EG")} ج
+                  {formatPrice(subtotal)}
                 </span>
               </div>
 
               <div className="flex justify-between text-white/45">
                 <span>الشحن</span>
 
-                <span>سيتم تحديده</span>
+                <span>
+                  سيتم تحديده
+                </span>
               </div>
             </div>
 
@@ -641,16 +674,17 @@ ${total.toLocaleString("ar-EG")} جنيه
 
               <div className="text-left">
                 <div className="text-3xl font-black text-[#b6ff00]">
-                  {total.toLocaleString("ar-EG")}
+                  {subtotal.toLocaleString(
+                    market.locale
+                  )}
                 </div>
 
                 <div className="text-xs text-white/30">
-                  جنيه مصري
+                  {market.currency}
                 </div>
               </div>
             </div>
 
-            {/* WHATSAPP BUTTON */}
             <button
               type="submit"
               disabled={submitting}
@@ -673,14 +707,14 @@ ${total.toLocaleString("ar-EG")} جنيه
             </button>
 
             <p className="mt-4 text-center text-[11px] leading-5 text-white/25">
-              بالضغط على الزر سيتم فتح واتساب وإرسال
-              تفاصيل الطلب مباشرة إلى خدمة الطلبات.
+              بالضغط على الزر سيتم فتح واتساب
+              وإرسال تفاصيل الطلب مباشرة إلى خدمة
+              الطلبات.
             </p>
           </aside>
         </form>
       </section>
 
-      {/* STYLES */}
       <style jsx global>{`
         .checkout-input {
           width: 100%;

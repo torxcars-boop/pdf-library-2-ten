@@ -12,11 +12,43 @@ import {
 } from "lucide-react";
 import {
   CartItem,
+  MarketCode,
   getCart,
   saveCart,
   getCartTotal,
   getCartCount,
+  getCartMarket,
 } from "@/lib/cart";
+
+const MARKET_INFO: Record<
+  MarketCode,
+  {
+    name: string;
+    currency: string;
+    locale: string;
+  }
+> = {
+  EG: {
+    name: "مصر",
+    currency: "ج.م",
+    locale: "ar-EG",
+  },
+  SA: {
+    name: "السعودية",
+    currency: "ر.س",
+    locale: "ar-SA",
+  },
+  AE: {
+    name: "الإمارات",
+    currency: "د.إ",
+    locale: "ar-AE",
+  },
+  JO: {
+    name: "الأردن",
+    currency: "د.أ",
+    locale: "ar-JO",
+  },
+};
 
 export default function CartPage() {
   const [items, setItems] = useState<CartItem[]>([]);
@@ -28,13 +60,17 @@ export default function CartPage() {
       setReady(true);
     };
 
-    const frame = window.requestAnimationFrame(loadCart);
+    const frame =
+      window.requestAnimationFrame(loadCart);
 
     const handleCartUpdate = () => {
       setItems(getCart());
     };
 
-    window.addEventListener("cart-updated", handleCartUpdate);
+    window.addEventListener(
+      "cart-updated",
+      handleCartUpdate
+    );
 
     return () => {
       window.cancelAnimationFrame(frame);
@@ -62,10 +98,11 @@ export default function CartPage() {
               }
             : item
         )
-        .filter((item) => item.quantity > 0);
+        .filter(
+          (item) => item.quantity > 0
+        );
 
       saveCart(updated);
-
       return updated;
     });
   };
@@ -73,11 +110,11 @@ export default function CartPage() {
   const removeItem = (index: number) => {
     setItems((current) => {
       const updated = current.filter(
-        (_, itemIndex) => itemIndex !== index
+        (_, itemIndex) =>
+          itemIndex !== index
       );
 
       saveCart(updated);
-
       return updated;
     });
   };
@@ -95,6 +132,20 @@ export default function CartPage() {
 
   const subtotal = getCartTotal(items);
   const itemCount = getCartCount(items);
+
+  const marketCode =
+    getCartMarket(items) || "EG";
+
+  const market =
+    MARKET_INFO[marketCode];
+
+  const formatPrice = (
+    value: number
+  ) => {
+    return `${Number(value).toLocaleString(
+      market.locale
+    )} ${market.currency}`;
+  };
 
   if (!ready) {
     return (
@@ -148,6 +199,22 @@ export default function CartPage() {
           <p className="mt-3 text-sm leading-7 text-white/40">
             راجع المنتجات والكميات قبل الانتقال إلى إتمام الطلب.
           </p>
+
+          {items.length > 0 && (
+            <div className="mt-5 inline-flex items-center gap-3 rounded-2xl border border-[#b6ff00]/20 bg-[#b6ff00]/5 px-5 py-3">
+              <span className="text-sm text-white/50">
+                السوق:
+              </span>
+
+              <span className="font-black text-[#b6ff00]">
+                {market.name}
+              </span>
+
+              <span className="text-sm text-white/30">
+                ({market.currency})
+              </span>
+            </div>
+          )}
         </div>
 
         {items.length === 0 ? (
@@ -243,13 +310,9 @@ export default function CartPage() {
                       <div className="mt-4 flex flex-wrap items-center justify-between gap-4">
                         <div>
                           <span className="text-xl font-black text-[#b6ff00]">
-                            {item.price.toLocaleString(
-                              "ar-EG"
+                            {formatPrice(
+                              item.price
                             )}
-                          </span>
-
-                          <span className="mr-1 text-xs text-white/30">
-                            جنيه
                           </span>
                         </div>
 
@@ -288,14 +351,12 @@ export default function CartPage() {
 
                       <div className="mt-3 text-xs text-white/25">
                         الإجمالي:
+
                         <span className="mr-1 font-bold text-white/60">
-                          {(
+                          {formatPrice(
                             item.price *
-                            item.quantity
-                          ).toLocaleString(
-                            "ar-EG"
-                          )}{" "}
-                          جنيه
+                              item.quantity
+                          )}
                         </span>
                       </div>
                     </div>
@@ -315,15 +376,28 @@ export default function CartPage() {
                 </h2>
               </div>
 
+              <div className="mb-5 rounded-2xl border border-white/10 bg-white/[0.02] p-4">
+                <div className="text-xs text-white/40">
+                  السوق المختار
+                </div>
+
+                <div className="mt-1 font-black text-white">
+                  {market.name}
+                </div>
+
+                <div className="mt-1 text-xs text-[#b6ff00]">
+                  العملة: {market.currency}
+                </div>
+              </div>
+
               <div className="space-y-4 border-b border-white/10 pb-6 text-sm">
                 <div className="flex items-center justify-between text-white/45">
-                  <span>قيمة المنتجات</span>
+                  <span>
+                    قيمة المنتجات
+                  </span>
 
                   <span className="font-bold text-white">
-                    {subtotal.toLocaleString(
-                      "ar-EG"
-                    )}{" "}
-                    جنيه
+                    {formatPrice(subtotal)}
                   </span>
                 </div>
 
@@ -344,12 +418,12 @@ export default function CartPage() {
                 <div className="text-left">
                   <div className="text-3xl font-black text-[#b6ff00]">
                     {subtotal.toLocaleString(
-                      "ar-EG"
+                      market.locale
                     )}
                   </div>
 
                   <div className="text-xs text-white/30">
-                    جنيه مصري
+                    {market.currency}
                   </div>
                 </div>
               </div>
@@ -361,23 +435,10 @@ export default function CartPage() {
                 إتمام الطلب
                 <ArrowLeft size={18} />
               </Link>
-
-              <Link
-                href="/"
-                className="mt-3 flex w-full items-center justify-center rounded-xl border border-white/10 px-5 py-4 text-sm font-bold text-white/50 transition hover:text-white"
-              >
-                متابعة التسوق
-              </Link>
             </aside>
           </div>
         )}
       </section>
-
-      <footer className="border-t border-white/10 py-8">
-        <div className="mx-auto max-w-7xl px-5 text-center text-xs text-white/25 sm:px-8">
-          جميع الحقوق محفوظة © {new Date().getFullYear()} المتجر
-        </div>
-      </footer>
     </main>
   );
 }

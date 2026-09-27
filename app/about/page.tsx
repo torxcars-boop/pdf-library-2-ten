@@ -20,7 +20,7 @@ export default function AboutPage() {
 
       <section className="mx-auto max-w-4xl px-5 py-16 sm:px-8 sm:py-24">
         <div className="text-xs font-bold tracking-[0.2em] text-[#b6ff00]">
-          ABOUT FLEX
+          ABOUT NEXORA
         </div>
 
         <h1 className="mt-3 text-4xl font-black sm:text-6xl">
@@ -30,7 +30,7 @@ export default function AboutPage() {
         <div className="mt-10 space-y-8 text-sm leading-8 text-white/60 sm:text-base">
           <section>
             <h2 className="mb-3 text-2xl font-black text-white">
-              عن FLEX
+              عن NEXORA
             </h2>
 
             <p>
